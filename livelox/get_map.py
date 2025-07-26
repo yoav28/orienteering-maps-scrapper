@@ -1,8 +1,8 @@
-import requests, os
+import requests
 
 
 
-def get_map(class_id: int):
+def get_map(class_id: int, cookies: dict) -> str:
     try:
         headers = {
             'accept': 'application/json, text/javascript, */*; q=0.01',
