@@ -17,7 +17,7 @@ class SQL:
         # Table: events
         # - id: Unique identifier for the event (integer, auto-incrementing, primary key, NOT NULL)
         # - name: Name of the event (text)
-        # - class_id: Class ID of the event (integer)
+        # - class_id: Class ID of the event (text)
         # - map: Map associated with the event (text, can be NULL)
         # - lat: Latitude of the event (real)
         # - lon: Longitude of the event (real)
@@ -29,7 +29,7 @@ class SQL:
             CREATE TABLE IF NOT EXISTS events (
                 id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
                 name TEXT,
-                class_id INTEGER,
+                class_id TEXT,
                 map TEXT,
                 lat REAL,
                 lon REAL,
@@ -52,16 +52,17 @@ class SQL:
         return self.cursor.fetchone() is not None
 
 
-    # cursor.execute('''
-    #                 INSERT INTO events (name, class_id, map, lat, lon, country, date, source)
-    #                 VALUES (?, ?, ?, ?, ?, ?, ?, livelox)
-    #             ''', (event.name, event.id, event.map, event.location[0], event.location[1], event.country, event.date))
-    def insert_event(self, name: str, class_id: int, map_name: str | None, lat: float, lon: float, country: str, date: str, source: str):
+    def event_or_map_exists(self, name: str, date: str, map_name: str | None) -> bool:
+        self.cursor.execute("SELECT 1 FROM events WHERE (name = ? AND date = ?) OR (map = ?)", (name, date, map_name))
+        return self.cursor.fetchone() is not None
+
+
+    def insert_event(self, name: str, class_id: str, map_name: str | None, lat: float, lon: float, country: str, date: str, source: str):
         self.cursor.execute('''
             INSERT INTO events (name, class_id, map, lat, lon, country, date, source)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (name, class_id, map_name, lat, lon, country, date, source))
-        
+        ''', (name, str(class_id), map_name, lat, lon, country, date, source))
+
         self.conn.commit()
 
 
@@ -69,26 +70,26 @@ class SQL:
         self.conn.close()
 
 
-# import sqlite3
-# 
-# 
-# path = "../maps.db"
-# 
-# conn = sqlite3.connect(path)
-# cursor = conn.cursor()
-# 
-# 
-# 
-# def remove_duplicates():
-#     cursor.execute("""
-#     DELETE FROM events
-#     WHERE rowid NOT IN (
-#         SELECT MIN(rowid)
-#         FROM events
-#         WHERE map IS NOT NULL
-#         GROUP BY map
-#     ) AND map IS NOT NULL;
-#     """)
-# 
-#     conn.commit()
-#     conn.close()
+if __name__ == '__main__':
+    db = SQL('maps.db', initialize=False)
+
+
+    def remove_duplicates():
+        answer = input("Do you want to remove duplicate events? (y/n): ").strip().lower()
+
+        if answer != 'y':
+            return print("Skipping duplicate removal.")
+        
+        db.cursor.execute("""
+        DELETE FROM events
+        WHERE rowid NOT IN (
+            SELECT MIN(rowid)
+            FROM events
+            WHERE map IS NOT NULL
+            GROUP BY map
+        ) AND map IS NOT NULL;
+        """)
+
+        db.conn.commit()
+        db.conn.close()
+        

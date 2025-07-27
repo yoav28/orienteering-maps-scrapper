@@ -3,13 +3,13 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from event import Event
 from utills import *
-from ..db import SQL
+from db import SQL
 
 
 
 class LiveloxScrapper:
 
-    def __init__(self, country: str | None = None, max_events: int = 1000, db_path: str = "maps.db"):
+    def __init__(self, country: str | None = None, max_events: int = 1000, db_path: str = "../maps.db"):
         self.counter = 0
         self.country = country
         self.db_path = db_path
@@ -51,7 +51,7 @@ class LiveloxScrapper:
                             'x-requested-with': 'XMLHttpRequest'
                         },
                         json={
-                            "countryId": country_code(self.country),
+                            "countryId": country_code_livelox(self.country),
                             "timePeriod": "customTimePeriod",
                             "from": from_date,
                             "to": to_date,
