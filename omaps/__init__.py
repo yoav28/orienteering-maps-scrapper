@@ -1,19 +1,27 @@
+import time, requests
 from concurrent.futures import ThreadPoolExecutor
 from utills import *
 from db import SQL
 
-import requests
-
 
 class OmapsScrapper:
 
-    def __init__(self, db_path: str):
+    def __init__(self, db_path: str, country: str):
         self.db_path = db_path
+        self.country = country
         self.db = SQL(self.db_path, initialize=True)
 
 
     def scrap_maps(self):
-        url = 'https://www.omaps.net/se/Home/LoadMaps'
+        print("Starting to scrape maps from omaps.net...")
+        
+        country_code = {
+            "Sweden": "se",
+            "Norway": "no",
+            "Australia": "au",
+        }[self.country]
+        
+        url = f'https://www.omaps.net/{country_code}/Home/LoadMaps'
 
         headers = {
             'Accept': 'application/json, text/javascript, */*; q=0.01',
@@ -28,12 +36,14 @@ class OmapsScrapper:
 
         data = response.json()
         maps = data['maps']
+        print("Fetched", len(maps), "maps from omaps.net.")
 
-        with ThreadPoolExecutor(max_workers=3) as executor:
-
+        with ThreadPoolExecutor(max_workers=5) as executor:
             for map_data in maps:
                 if self.verify_map(map_data):
                     executor.submit(self.scrap_map, map_data)
+                    
+        print_green("All valid maps have been processed.")
 
 
     def scrap_map(self, map_data):
@@ -45,37 +55,51 @@ class OmapsScrapper:
         if not map_url:
             return print_red(f"Failed to get map URL for map {map_id}")
 
-        if self.db.map_exists(map_name=map_url):
-            return print_red(f"Map {name} already exists in the database.")
-
         db = SQL(self.db_path, initialize=False)
 
+        if db.map_exists(map_name=map_url):
+            return print_red(f"Map {name} already exists in the database.")
+
+        source = {
+            "Sweden": "omaps",
+            "Norway": "omaps-no",
+            "Australia": "omaps-au",
+        }[self.country]
+        
         db.insert_event(map_name=map_url, date=map_data['createdTime'].split('T')[0], lat=map_data['south'], lon=map_data['west'],
-                        class_id=map_id, name=name, source="omaps", country="Sweden")
+                        class_id=map_id, name=name, source=source, country=self.country)
 
         return print_green(f"Map '{name}' added to the database.")
 
 
     @staticmethod
     def get_map_url(map_id: int) -> str:
+        tic = time.perf_counter()
         url = f"https://www.omaps.net/se/Home/MapImage/{map_id}"
 
         res = requests.get(url)
         if res.status_code != 200:
             raise Exception(f"Failed to fetch map image: {res.status_code} {res.text}")
+        
+        toc = time.perf_counter()
+        print(f"Fetched map image for {map_id} in {toc - tic:.2f} seconds.")
 
         return res.url
 
 
     def verify_map(self, map_data):
-        if map_data['status'] != 'published':
-            return False
-
         if map_data['newerMapExists']:
+            print_red("Newer version of the map exists, skipping...", map_data['id'])
             return False
 
         if not map_data['hasImage']:
+            print_red("Map does not have an image, skipping...", map_data['id'])
             return False
+
+        if map_data['status'] != 'published':
+            print_red("Map is not published, skipping...", map_data['id'])
+            return False
+    
 
         lon = map_data['west']
         lat = map_data['south']
@@ -91,5 +115,5 @@ class OmapsScrapper:
 
 
 if __name__ == '__main__':
-    scrapper = OmapsScrapper(db_path='../maps.db')
+    scrapper = OmapsScrapper(db_path='../maps.db', country="Norway")
     scrapper.scrap_maps()
