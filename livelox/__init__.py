@@ -132,7 +132,7 @@ class LiveloxScrapper:
             if db.map_exists(event.map):
                 return db.close()
 
-            db.insert_event(name=event.name, class_id=event.id, map_name=event.map, lat=event.location[0], lon=event.location[1],
+            db.insert_event(name=event.name, class_id=str(event.id), map_name=event.map, lat=event.location[0], lon=event.location[1],
                             country=event.country, date=event.date, source='livelox')
 
             print_green(f"Event '{event.name}' added to the database.")
