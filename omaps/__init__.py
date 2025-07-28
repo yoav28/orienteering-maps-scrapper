@@ -38,10 +38,13 @@ class OmapsScrapper:
         maps = data['maps']
         print("Fetched", len(maps), "maps from omaps.net.")
 
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            for map_data in maps:
+        with ThreadPoolExecutor(max_workers=300) as executor:
+            for i in range(500, len(maps)):
+                map_data = maps[i]
+                print(i, end=' - ')
                 if self.verify_map(map_data):
                     executor.submit(self.scrap_map, map_data)
+                    # self.scrap_map(map_data)
                     
         print_green("All valid maps have been processed.")
 
@@ -115,5 +118,5 @@ class OmapsScrapper:
 
 
 if __name__ == '__main__':
-    scrapper = OmapsScrapper(db_path='../maps.db', country="Norway")
+    scrapper = OmapsScrapper(db_path='../maps.db', country="Australia")
     scrapper.scrap_maps()

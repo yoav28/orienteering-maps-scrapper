@@ -70,17 +70,15 @@ class SQL:
         self.conn.close()
 
 
-if __name__ == '__main__':
+def remove_duplicates():
+    answer = input("Do you want to remove duplicate events? (y/n): ").strip().lower()
+
+    if answer != 'y':
+        return print("Skipping duplicate removal.")
+
     db = SQL('maps.db', initialize=False)
 
-
-    def remove_duplicates():
-        answer = input("Do you want to remove duplicate events? (y/n): ").strip().lower()
-
-        if answer != 'y':
-            return print("Skipping duplicate removal.")
-        
-        db.cursor.execute("""
+    db.cursor.execute("""
         DELETE FROM events
         WHERE rowid NOT IN (
             SELECT MIN(rowid)
@@ -90,6 +88,5 @@ if __name__ == '__main__':
         ) AND map IS NOT NULL;
         """)
 
-        db.conn.commit()
-        db.conn.close()
-        
+    db.conn.commit()
+    return db.conn.close()
